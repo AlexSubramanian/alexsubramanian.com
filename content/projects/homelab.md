@@ -10,10 +10,17 @@ weight: 1
 
 My homelab runs on a Proxmox virtualization server hosting multiple VMs for different services. The infrastructure is documented in my [homelab GitHub repository](https://github.com/AlexSubramanian/homelab).
 
+## The Rack
+
+This is where the site you're reading right now is running — a StarTech 25U rack in my basement.
+
+![Homelab rack](/images/homelab-rack.jpg)
+
 ## Hardware
 
-- Proxmox VE host
-- Multiple VMs for isolated services
+- Proxmox VE host (HP EliteDesk)
+- UniFi networking (UDM SE, switches, patch panel)
+- StarTech 25U open-frame rack
 
 ## Virtual Machines
 

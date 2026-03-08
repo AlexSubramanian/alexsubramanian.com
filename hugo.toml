@@ -24,7 +24,7 @@ enableGitInfo = true
 [params.author]
   name = "Alex Subramanian"
   headline = "Software Engineer at Salesforce"
-  bio = "Building Tableau Next at Salesforce. Former electrophysics and software engineer at Boeing (TS clearance). MS in Computer Science (Machine Learning) from ASU, BS in Electrical Engineering from Mizzou."
+  bio = "Building Tableau Next at Salesforce. Career spanning AI analytics, aerospace defense software, and electrophysics at Boeing (TS clearance). MS in Computer Science (ML) from ASU, BS in EE from Mizzou."
   links = [
     { github = "https://github.com/AlexSubramanian" },
   ]
