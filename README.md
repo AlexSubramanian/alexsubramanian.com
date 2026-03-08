@@ -31,11 +31,10 @@ Host a personal website at alexsubramanian.com to support job applications and s
 - **Repo:** `alexsubramanian.com` (public, separate from homelab repo)
 
 ### Bot and Scraper Protection (Layered)
-1. **Cloudflare (free tier):** Filters malicious bots and caches static assets at edge before traffic hits home
-2. **Caddy rate limiting:** Limits requests per IP at the web server level
-3. **robots.txt:** Discourages well-behaved scrapers from aggressive crawling
-4. **fail2ban:** Watches Caddy access logs and bans abusive IPs via iptables
-5. **Static site advantage:** No database to overwhelm, no dynamic endpoints to exploit
+1. **Cloudflare (free tier):** Filters malicious bots, caches static assets at edge, and rate limits requests before traffic hits home
+2. **robots.txt:** Discourages well-behaved scrapers from aggressive crawling
+3. **fail2ban:** Watches Caddy access logs and bans abusive IPs via iptables
+4. **Static site advantage:** No database to overwhelm, no dynamic endpoints to exploit
 
 ---
 
@@ -111,24 +110,14 @@ Steps:
    sudo apt install -y curl wget nano qemu-guest-agent fail2ban git
    sudo systemctl enable qemu-guest-agent && sudo systemctl start qemu-guest-agent
    ```
-4. Install Hugo (extended edition):
+4. Install Docker (Hugo and Caddy run inside containers, no need to install them on the host):
    ```bash
-   sudo apt install hugo
-   hugo version
-   ```
-5. Install Caddy:
-   ```bash
-   # https://caddyserver.com/docs/install#debian-ubuntu-raspbian
-   sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
-   curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-   curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
-   chmod o+r /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-   chmod o+r /etc/apt/sources.list.d/caddy-stable.list
-   sudo apt update
-   sudo apt install caddy
+   curl -fsSL https://get.docker.com | sudo sh
+   sudo usermod -aG docker alex
+   # Log out and back in for group membership to take effect
    ```
 
-**Verification:** SSH to 192.168.1.104, `hugo version` and `caddy version` both work
+**Verification:** SSH to 192.168.1.104, `docker version` works
 
 ### Phase 3: Router Port Forwarding and Firewall
 **Goal:** Route external web traffic to VM 104 only
@@ -171,73 +160,66 @@ Steps:
        ├── _index.md          # Documentation section
        └── hosting-this-site.md  # Meta-doc about the site setup itself
    ```
-5. Build and test locally: 
-   ```bash
-   hugo server -D
-   ```
-6. Commit and push the new scaffolding to GitHub:
+5. Commit and push the new scaffolding to GitHub:
    ```bash
    git add .
    git commit -m "Initialize Hugo scaffolding and add hugo-book theme"
    git push origin main
    ```
 
-### Phase 5: Caddy Configuration
-**Goal:** Serve the Hugo site over HTTPS with security hardening
+### Phase 5: Docker and Caddy Setup
+**Goal:** Serve the Hugo site over HTTPS in a Docker container with security hardening
 
 Steps:
 1. Place the Cloudflare origin certificate and key on the VM:
    ```bash
-   mkdir -p /opt/caddy/certs
-   # Copy origin cert and key from Cloudflare dashboard
+   sudo mkdir -p /opt/caddy/certs
+   # Copy origin cert and key from Cloudflare dashboard as cert.pem and key.pem
    ```
-2. Create the Caddyfile at `/opt/caddy/Caddyfile`:
+2. The `Caddyfile` and `Dockerfile` live in the repo root. Build and run:
+   ```bash
+   cd ~/alexsubramanian.com
+   git pull
+   sudo mkdir -p /var/log/caddy
+   docker build -t alexsubramanian-site .
+   docker run -d --name site -p 80:80 -p 443:443 \
+     -v /opt/caddy/certs:/etc/caddy/certs:ro \
+     -v /var/log/caddy:/var/log/caddy \
+     --restart unless-stopped \
+     alexsubramanian-site
    ```
-   alexsubramanian.com {
-       root * /var/www/alexsubramanian.com/public
-       file_server
-       encode gzip
-
-       tls /opt/caddy/certs/origin.pem /opt/caddy/certs/origin-key.pem
-
-       header {
-           X-Content-Type-Options nosniff
-           X-Frame-Options DENY
-           Referrer-Policy strict-origin-when-cross-origin
-           -Server
-       }
-
-       # Rate limiting
-       rate_limit {
-           zone static_zone {
-               key {remote_host}
-               events 100
-               window 1m
-           }
-       }
-   }
-
-   www.alexsubramanian.com {
-       redir https://alexsubramanian.com{uri} permanent
-   }
-   ```
-3. Configure Caddy to use the custom Caddyfile and restart
-4. Set up fail2ban with a Caddy jail for repeated 4xx/5xx errors
+5. Set up fail2ban with a Caddy jail for repeated 4xx/5xx errors:
+   - Create filter at `/etc/fail2ban/filter.d/caddy-status.conf`:
+     ```ini
+     [Definition]
+     failregex = ^.*"remote_ip":"<HOST>".*"status":(4[0-9]{2}|5[0-9]{2}).*$
+     ignoreregex =
+     ```
+   - Create jail at `/etc/fail2ban/jail.d/caddy.conf`:
+     ```ini
+     [caddy-status]
+     enabled = true
+     port = http,https
+     filter = caddy-status
+     logpath = /var/log/caddy/access.log
+     maxretry = 20
+     findtime = 60
+     bantime = 600
+     ```
+   - Restart fail2ban:
+     ```bash
+     sudo systemctl restart fail2ban
+     ```
 
 **Verification:** `curl -I https://alexsubramanian.com` returns 200 with correct security headers
 
 ### Phase 6: CI/CD Pipeline
-**Goal:** Automated build and deploy on push to main
+**Goal:** Automated build and deploy on push to main via container images (no SSH keys needed)
+
+The deployment model: GitHub Actions builds a Docker image containing the Hugo output and Caddy config, pushes it to GitHub Container Registry (`ghcr.io`). On the server, Watchtower polls for new images and automatically restarts the container.
 
 Steps:
-1. On the web server VM, create a deploy user with restricted SSH access:
-   ```bash
-   useradd -m -s /bin/bash deploy
-   mkdir -p /home/deploy/.ssh
-   # Add GitHub Actions public key to authorized_keys
-   # Grant deploy user write access to /var/www/alexsubramanian.com/
-   ```
-2. In the GitHub repo, create `.github/workflows/deploy.yml`:
+1. In the GitHub repo, create `.github/workflows/deploy.yml`:
    ```yaml
    name: Deploy Site
    on:
@@ -247,33 +229,41 @@ Steps:
    jobs:
      deploy:
        runs-on: ubuntu-latest
+       permissions:
+         contents: read
+         packages: write
        steps:
          - uses: actions/checkout@v4
            with:
              submodules: true
 
-         - name: Setup Hugo
-           uses: peaceiris/actions-hugo@v3
+         - name: Log in to GitHub Container Registry
+           uses: docker/login-action@v3
            with:
-             hugo-version: 'latest'
-             extended: true
+             registry: ghcr.io
+             username: ${{ github.actor }}
+             password: ${{ secrets.GITHUB_TOKEN }}
 
-         - name: Build
-           run: hugo --minify
-
-         - name: Deploy
-           uses: burnett01/rsync-deployments@7.0.2
+         - name: Build and push Docker image
+           uses: docker/build-push-action@v6
            with:
-             switches: -avz --delete
-             path: public/
-             remote_path: /var/www/alexsubramanian.com/public/
-             remote_host: alexsubramanian.com
-             remote_user: deploy
-             remote_key: ${{ secrets.DEPLOY_SSH_KEY }}
+             context: .
+             push: true
+             tags: ghcr.io/alexsubramanian/alexsubramanian.com:latest
    ```
-3. Add the SSH private key as a GitHub Actions secret (`DEPLOY_SSH_KEY`)
+2. On the server, log in to `ghcr.io` so Docker and Watchtower can pull images:
+   ```bash
+   # Create a GitHub personal access token (classic) with read:packages scope
+   echo "<token>" | docker login ghcr.io -u AlexSubramanian --password-stdin
+   ```
+3. Switch from the manually-built container to `docker-compose.yml` (in the repo root), which includes Watchtower for auto-updates:
+   ```bash
+   docker stop site && docker rm site
+   cd ~/alexsubramanian.com
+   docker compose up -d
+   ```
 
-**Verification:** Push a content change to `main`, confirm site updates within ~1 minute
+**Verification:** Push a content change to `main`, confirm site updates within ~2 minutes
 
 ### Phase 7: Content
 **Goal:** Write the initial pages that make the site useful for job applications
@@ -326,7 +316,7 @@ alexsubramanian.com/
 - [ ] Only ports 80/443 forwarded, only to VM 104
 - [ ] Firewall rules prevent external access to any other VM
 - [ ] Caddy security headers configured (nosniff, DENY framing, etc.)
-- [ ] Rate limiting enabled in Caddy
+- [ ] Rate limiting enabled in Cloudflare
 - [ ] fail2ban watching Caddy logs
 - [ ] robots.txt configured
 - [ ] SSH key-only auth on VM 104 (password auth disabled)

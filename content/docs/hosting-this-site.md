@@ -10,9 +10,13 @@ This page documents the full stack behind alexsubramanian.com — from DNS to de
 ## Architecture Overview
 
 ```text
-User → Cloudflare (CDN/DNS) → Caddy (HTTPS) → Hugo static files
+User → Cloudflare (CDN/DNS) → Docker (Caddy + Hugo static files)
                                     ↑
-                        GitHub Actions (CI/CD)
+                        Watchtower (auto-pull)
+                                    ↑
+                          ghcr.io container registry
+                                    ↑
+                        GitHub Actions (build + push)
                                     ↑
                           Push to main branch
 ```
@@ -22,10 +26,10 @@ User → Cloudflare (CDN/DNS) → Caddy (HTTPS) → Hugo static files
 | Layer | Technology | Purpose |
 |-------|-----------|---------|
 | DNS / CDN | Cloudflare (Free) | DNS, caching, DDoS protection, hides origin IP |
-| Web Server | Caddy | Static file serving, automatic HTTPS, security headers |
-| Site Generator | Hugo | Builds static HTML from Markdown content |
-| Hosting | Proxmox VM (Debian) | 1 vCPU, 1GB RAM lightweight VM |
-| CI/CD | GitHub Actions | Automated build and deploy on push to main |
+| Web Server | Caddy (in Docker) | Static file serving, HTTPS, security headers |
+| Site Generator | Hugo (in Docker) | Builds static HTML from Markdown at image build time |
+| Hosting | Proxmox VM (Debian) | 1 vCPU, 1GB RAM lightweight VM running Docker |
+| CI/CD | GitHub Actions + Watchtower | Build image, push to ghcr.io, auto-pull on server |
 | Version Control | GitHub | Public repo for source and content |
 
 ## DNS and Cloudflare
@@ -37,23 +41,24 @@ The domain is registered through Porkbun with nameservers pointed to Cloudflare.
 - SSL/TLS in Full (Strict) mode with a Cloudflare origin certificate
 - DDoS and bot protection
 
-## Web Server
+## Containerized Deployment
 
-Caddy runs on a dedicated Debian VM (VM 104) in Proxmox with:
+The site runs as a single Docker container that bundles both Hugo's static output and the Caddy web server. A multi-stage Dockerfile builds the site with Hugo, then copies the output into a Caddy image. The Cloudflare origin certificate is mounted from the host at runtime.
+
+Caddy is configured with:
 
 - Cloudflare origin certificate for TLS
 - Security headers (X-Content-Type-Options, X-Frame-Options, Referrer-Policy)
-- Rate limiting per IP
 - Gzip compression
+- JSON access logging for fail2ban
 
 ## CI/CD Pipeline
 
-*This section will be updated once the GitHub Actions pipeline is configured (Phase 6).*
+On push to `main`, GitHub Actions builds the Docker image and pushes it to GitHub Container Registry (`ghcr.io`). On the server, Watchtower polls for new images and automatically restarts the container. No SSH keys or exposed deployment ports are needed.
 
 ## Security Layers
 
-1. **Cloudflare** — Filters malicious traffic at the edge
-2. **Caddy rate limiting** — Per-IP request limits
-3. **robots.txt** — Discourages aggressive crawlers
-4. **fail2ban** — Bans abusive IPs based on Caddy access logs
-5. **Static site** — No database or dynamic endpoints to exploit
+1. **Cloudflare** — Filters malicious traffic and rate limits at the edge
+2. **robots.txt** — Discourages aggressive crawlers
+3. **fail2ban** — Bans abusive IPs based on Caddy access logs
+4. **Static site** — No database or dynamic endpoints to exploit

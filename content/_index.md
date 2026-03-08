@@ -5,7 +5,7 @@ type: docs
 
 # Alex Subramanian
 
-Welcome to my personal site. I'm a technology professional with hands-on experience in infrastructure, networking, and automation.
+Welcome to my personal webpage, hosted in my basement. I'm a software still in the process of building this out!
 
 ## What You'll Find Here
 
