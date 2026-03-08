@@ -1,3 +1,39 @@
-baseURL = 'https://example.org/'
+baseURL = 'https://alexsubramanian.com/'
 languageCode = 'en-us'
-title = 'My New Hugo Site'
+title = 'Alex Subramanian'
+
+theme = 'hugo-book'
+
+# Disable taxonomy pages (not needed for a portfolio site)
+disableKinds = ['taxonomy', 'term']
+
+enableGitInfo = true
+
+[params]
+  BookTheme = 'auto'
+  BookToC = true
+  BookSection = 'docs'
+  BookSearch = true
+  BookDateFormat = 'January 2, 2006'
+  BookComments = false
+
+  # Link to edit pages on GitHub
+  BookRepo = 'https://github.com/AlexSubramanian/alexsubramanian.com'
+  BookEditPath = 'edit/main/content'
+
+[menu]
+
+[[menu.before]]
+  name = 'Home'
+  url = '/'
+  weight = 1
+
+[[menu.before]]
+  name = 'Resume'
+  url = '/resume/'
+  weight = 2
+
+[[menu.before]]
+  name = 'Projects'
+  url = '/projects/'
+  weight = 3
