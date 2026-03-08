@@ -1,7 +1,7 @@
 # Implementation Plan for Self-Hosted Portfolio and Documentation Site  
 *This plan will be updated as phases are completed.*  
 **Created**: March 2026  
-**Status:** Phase 2 in progress
+**Status:** Phase 4 in progress
 
 ---
 
@@ -102,26 +102,31 @@ Steps:
 2. Install Debian (SSH server + standard utilities only)
 3. Post-install configuration:
    ```bash
+   # login as root to install sudo, elevate user permissions to allow sudo first
+   su -
    apt update && apt upgrade -y
-   apt install -y curl wget sudo nano qemu-guest-agent fail2ban git
-   systemctl enable qemu-guest-agent && systemctl start qemu-guest-agent
+   apt install sudo
+   usermod -aG sudo alex
+   exit
+   sudo apt install -y curl wget nano qemu-guest-agent fail2ban git
+   sudo systemctl enable qemu-guest-agent && sudo systemctl start qemu-guest-agent
    ```
 4. Install Hugo (extended edition):
    ```bash
-   # Check https://github.com/gohugoio/hugo/releases for latest version
-   wget https://github.com/gohugoio/hugo/releases/download/v0.142.0/hugo_extended_0.142.0_linux-amd64.deb
-   dpkg -i hugo_extended_*.deb
+   sudo apt install hugo
    hugo version
    ```
 5. Install Caddy:
    ```bash
-   apt install -y debian-keyring debian-archive-keyring apt-transport-https
-   curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-   curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list
-   apt update && apt install caddy
+   # https://caddyserver.com/docs/install#debian-ubuntu-raspbian
+   sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
+   curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+   curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
+   chmod o+r /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+   chmod o+r /etc/apt/sources.list.d/caddy-stable.list
+   sudo apt update
+   sudo apt install caddy
    ```
-6. Set static IP (192.168.1.104) via DHCP reservation on UDM SE
-7. Configure auto-start: `qm set 104 --onboot 1 --startup order=4`
 
 **Verification:** SSH to 192.168.1.104, `hugo version` and `caddy version` both work
 
@@ -138,21 +143,23 @@ Steps:
 **Verification:** From an external network (e.g., phone on cellular), `curl -I http://[home-public-ip]` reaches the web server VM
 
 ### Phase 4: Hugo Site Scaffolding
-**Goal:** Initialize the Hugo site with a professional theme and basic content structure
+**Goal:** Initialize the Hugo site with a professional theme and basic content structure within the existing repository.
 
 Steps:
-1. Create the GitHub repo: `alexsubramanian.com`
-2. On a development machine (or the VM), scaffold the site:
+1. Clone this repo on a development machine (or the VM) and move into the directory:
    ```bash
-   hugo new site alexsubramanian.com
+   git clone https://github.com/AlexSubramanian/alexsubramanian.com.git
    cd alexsubramanian.com
-   git init
+   ```
+2. Scaffold the site (using `--force` to bypass the existing README and `.git` data):
+   ```bash
+   hugo new site . --force
    # Add chosen theme as a git submodule
-   git submodule add https://github.com/alex-shpak/hugo-book themes/hugo-book
+   git submodule add https://github.com/alex-shpak/hugo-book.git themes/hugo-book
    ```
-3. Configure `hugo.toml` with site title, base URL, theme, and menu structure
+3. Configure `hugo.toml` with site title, base URL, theme (`theme = 'hugo-book'`), and menu structure.
 4. Create initial content structure:
-   ```
+   ```text
    content/
    ├── _index.md              # Landing / about page
    ├── resume/
@@ -164,10 +171,16 @@ Steps:
        ├── _index.md          # Documentation section
        └── hosting-this-site.md  # Meta-doc about the site setup itself
    ```
-5. Build and test locally: `hugo server -D`
-6. Push to GitHub
-
-**Verification:** `hugo server` runs locally and site renders correctly
+5. Build and test locally: 
+   ```bash
+   hugo server -D
+   ```
+6. Commit and push the new scaffolding to GitHub:
+   ```bash
+   git add .
+   git commit -m "Initialize Hugo scaffolding and add hugo-book theme"
+   git push origin main
+   ```
 
 ### Phase 5: Caddy Configuration
 **Goal:** Serve the Hugo site over HTTPS with security hardening
