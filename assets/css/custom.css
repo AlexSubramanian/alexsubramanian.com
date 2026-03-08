@@ -1,8 +1,6 @@
-.profile .recent-articles {
-    text-align: center;
-}
-
-.profile .recent-articles .recent-articles-list {
-    display: inline-block;
-    text-align: left;
+/* Left-align the body text on the profile homepage */
+article.text-center section.prose {
+    text-align: left !important;
+    max-width: 640px;
+    margin: 0 auto;
 }
