@@ -256,14 +256,20 @@ Steps:
    # Create a GitHub personal access token (classic) with read:packages scope
    echo "<token>" | docker login ghcr.io -u AlexSubramanian --password-stdin
    ```
-3. Switch from the manually-built container to `docker-compose.yml` (in the repo root), which includes Watchtower for auto-updates:
+3. Clone the repo and start `docker-compose.yml`, which includes Watchtower for auto-updates:
    ```bash
-   docker stop site && docker rm site
+   git clone https://github.com/AlexSubramanian/alexsubramanian.com.git ~/alexsubramanian.com
    cd ~/alexsubramanian.com
    docker compose up -d
    ```
+   Note: The repo on the server is only needed for `docker-compose.yml`. The site itself builds in GitHub Actions — no need to initialize submodules or install Hugo on the server.
 
-**Verification:** Push a content change to `main`, confirm site updates within ~2 minutes
+Watchtower polls once per day. To manually trigger an immediate deploy after pushing:
+   ```bash
+   docker compose pull site && docker compose up -d site
+   ```
+
+**Verification:** Push a content change to `main`, run the manual deploy command, confirm site updates
 
 ### Phase 7: Content
 **Goal:** Write the initial pages that make the site useful for job applications

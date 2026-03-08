@@ -1,10 +1,4 @@
 ---
 title: "Projects"
-weight: 2
-bookFlatSection: true
-bookHidden: true
+description: "A collection of technical projects I've built and documented."
 ---
-
-# Projects
-
-A collection of technical projects I've built and documented.

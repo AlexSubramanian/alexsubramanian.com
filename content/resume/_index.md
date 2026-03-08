@@ -1,16 +1,10 @@
 ---
 title: "Resume"
-weight: 1
-bookFlatSection: true
-bookHidden: true
 ---
 
-# Resume
-
-{{< hint info >}}
-**PDF Download**
-A downloadable PDF version will be available here soon.
-{{< /hint >}}
+{{< alert >}}
+**PDF Download** — A downloadable PDF version will be available here soon.
+{{< /alert >}}
 
 ## Professional Experience
 

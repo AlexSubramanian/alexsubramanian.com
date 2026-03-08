@@ -1,9 +1,4 @@
 ---
 title: "Documentation"
-weight: 3
-bookCollapseSection: true
+description: "Technical documentation and guides."
 ---
-
-# Documentation
-
-Technical documentation and guides.

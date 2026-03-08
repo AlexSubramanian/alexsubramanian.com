@@ -2,38 +2,45 @@ baseURL = 'https://alexsubramanian.com/'
 languageCode = 'en-us'
 title = 'Alex Subramanian'
 
-theme = 'hugo-book'
-
-# Disable taxonomy pages (not needed for a portfolio site)
-disableKinds = ['taxonomy', 'term']
+theme = 'blowfish'
 
 enableGitInfo = true
 
+[taxonomies]
+  tag = "tags"
+
 [params]
-  BookTheme = 'auto'
-  BookToC = true
-  BookSection = 'docs'
-  BookSearch = true
-  BookDateFormat = 'January 2, 2006'
-  BookComments = false
+  colorScheme = "ocean"
+  defaultAppearance = "dark"
+  autoSwitchAppearance = true
+  showScrollToTop = true
 
-  # Link to edit pages on GitHub
-  BookRepo = 'https://github.com/AlexSubramanian/alexsubramanian.com'
-  BookEditPath = 'edit/main/content'
+[params.homepage]
+  layout = "profile"
+  showRecent = true
+  recentLimit = 5
 
-[menu]
+[params.author]
+  name = "Alex Subramanian"
+  headline = "Infrastructure & DevOps"
+  bio = "Technology professional with hands-on experience in infrastructure, networking, and automation."
 
-[[menu.before]]
-  name = 'Home'
-  url = '/'
+[params.article]
+  showDate = true
+  showReadingTime = true
+  showTableOfContents = true
+
+[[menus.main]]
+  name = "Resume"
+  url = "/resume/"
   weight = 1
 
-[[menu.before]]
-  name = 'Resume'
-  url = '/resume/'
+[[menus.main]]
+  name = "Projects"
+  url = "/projects/"
   weight = 2
 
-[[menu.before]]
-  name = 'Projects'
-  url = '/projects/'
+[[menus.main]]
+  name = "Docs"
+  url = "/docs/"
   weight = 3
