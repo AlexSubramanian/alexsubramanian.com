@@ -1,5 +1,6 @@
 ---
 title: "Homelab"
+date: 2026-03-07
 weight: 1
 ---
 

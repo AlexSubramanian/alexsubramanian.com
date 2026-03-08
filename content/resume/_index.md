@@ -1,5 +1,6 @@
 ---
 title: "Resume"
+date: 2026-03-07
 ---
 
 {{< alert >}}
@@ -8,19 +9,35 @@ title: "Resume"
 
 ## Professional Experience
 
-*Coming soon — this section will contain my professional experience.*
+**Salesforce** — Software Engineer
+- Building Tableau Next and previously Tableau Pulse
+- AI-powered analytics and cloud development
+
+**Narrative Science** — Software Engineer
+- Built AI-driven analytics platform
+
+**Sierra Nevada Corporation** — Software Engineer
+- Aerospace and intelligence programs
+- Simulators, emulators, and hardware mission systems
+
+**Boeing** — Electrophysics Engineer → Software Engineer
+- Held Top Secret clearance
+- Worked on classified aerospace & defense programs
 
 ## Skills
 
+- **Languages:** Python, Go, C, C++, C#, Bash
+- **AI/ML:** Machine Learning, Analytics, AI-driven applications
+- **Cloud:** AWS (S3, CloudFront, EC2), Salesforce platform
 - **Infrastructure:** Proxmox, Docker, Linux (Debian), Networking
-- **Languages:** Go, Python, Bash
 - **Tools:** Git, GitHub Actions, Caddy, Hugo
-- **Cloud:** AWS (S3, CloudFront, EC2)
 - **Networking:** DNS, Cloudflare, VLANs, Firewalls
 
 ## Education
 
-*Coming soon.*
+**Arizona State University** — MS in Computer Science (Machine Learning emphasis)
+
+**University of Missouri** — BS in Electrical Engineering
 
 ## Certifications
 

@@ -14,6 +14,7 @@ enableGitInfo = true
   defaultAppearance = "dark"
   autoSwitchAppearance = true
   showScrollToTop = true
+  customCSS = ["css/custom.css"]
 
 [params.homepage]
   layout = "profile"
@@ -22,8 +23,11 @@ enableGitInfo = true
 
 [params.author]
   name = "Alex Subramanian"
-  headline = "Infrastructure & DevOps"
-  bio = "Technology professional with hands-on experience in infrastructure, networking, and automation."
+  headline = "Software Engineer at Salesforce"
+  bio = "Building Tableau Next at Salesforce. Former electrophysics and software engineer at Boeing (TS clearance). MS in Computer Science (Machine Learning) from ASU, BS in Electrical Engineering from Mizzou."
+  links = [
+    { github = "https://github.com/AlexSubramanian" },
+  ]
 
 [params.article]
   showDate = true
