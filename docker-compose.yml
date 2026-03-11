@@ -15,10 +15,11 @@ services:
     container_name: cloudflare-ddns
     network_mode: host
     environment:
-      - CF_API_TOKEN=${CF_DDNS_API_TOKEN}
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_DDNS_API_TOKEN}
       - DOMAINS=alexsubramanian.com
       - PROXIED=true
-      - UPDATE_CRON=*/30 * * * *
+      - IP6_PROVIDER=none
+      - UPDATE_CRON=0 */6 * * *
     restart: unless-stopped
 
   watchtower:
