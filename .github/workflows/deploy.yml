@@ -30,8 +30,13 @@ jobs:
 
       - name: Trigger deploy
         run: |
-          curl -sf -X POST https://alexsubramanian.com/v1/update \
-            -H "Authorization: Bearer ${{ secrets.WATCHTOWER_TOKEN }}"
+          # Watchtower restarts the Caddy container that proxies this request,
+          # so the connection will drop before we get a response. Fire and move on.
+          curl -s --max-time 10 -X POST https://alexsubramanian.com/v1/update \
+            -H "Authorization: Bearer ${{ secrets.WATCHTOWER_TOKEN }}" || true
+
+      - name: Wait for site to restart
+        run: sleep 15
 
       - name: Purge Cloudflare cache
         run: |

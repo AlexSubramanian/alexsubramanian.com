@@ -1,5 +1,5 @@
 FROM alpine:3.21 AS pdf-converter
-RUN apk add --no-cache libreoffice font-noto
+RUN apk add --no-cache libreoffice font-carlito font-liberation
 COPY content/resume/*.docx /tmp/
 RUN libreoffice --headless --convert-to pdf --outdir /tmp/ /tmp/*.docx
 
