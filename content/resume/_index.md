@@ -1,6 +1,7 @@
 ---
 title: "Resume"
 date: 2026-03-10
+layout: "simple"
 ---
 
 [Download Resume (PDF)](/files/resume.pdf)

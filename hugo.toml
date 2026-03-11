@@ -18,8 +18,7 @@ enableGitInfo = true
 
 [params.homepage]
   layout = "profile"
-  showRecent = true
-  recentLimit = 5
+  showRecent = false
 
 [params.author]
   name = "Alex Subramanian"
@@ -31,7 +30,7 @@ enableGitInfo = true
 
 [params.article]
   showDate = true
-  showReadingTime = true
+  showReadingTime = false
   showTableOfContents = true
 
 [[menus.main]]
