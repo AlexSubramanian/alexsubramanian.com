@@ -10,6 +10,17 @@ services:
       - /var/log/caddy:/var/log/caddy
     restart: unless-stopped
 
+  cloudflare-ddns:
+    image: favonia/cloudflare-ddns:latest
+    container_name: cloudflare-ddns
+    network_mode: host
+    environment:
+      - CF_API_TOKEN=${CF_DDNS_API_TOKEN}
+      - DOMAINS=alexsubramanian.com
+      - PROXIED=true
+      - UPDATE_CRON=*/30 * * * *
+    restart: unless-stopped
+
   watchtower:
     image: containrrr/watchtower:latest
     container_name: watchtower
