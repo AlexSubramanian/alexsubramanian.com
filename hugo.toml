@@ -23,8 +23,8 @@ enableGitInfo = true
 
 [params.author]
   name = "Alex Subramanian"
-  headline = "Software Engineer at Salesforce"
-  bio = "Building Tableau Next at Salesforce. Career spanning AI analytics, aerospace defense software, and electrophysics at Boeing (TS clearance). MS in Computer Science (ML) from ASU, BS in EE from Mizzou."
+  headline = "Senior Software Engineer at Salesforce (Tableau)"
+  bio = "Designing and shipping LLM-powered agentic features at Salesforce. Built the core analytics platform for Tableau Pulse. 13+ years spanning enterprise SaaS, AI/ML, and defense/aerospace. MS in Computer Science (AI/ML) from ASU."
   links = [
     { github = "https://github.com/AlexSubramanian" },
   ]

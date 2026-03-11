@@ -27,3 +27,8 @@ jobs:
           context: .
           push: true
           tags: ghcr.io/alexsubramanian/alexsubramanian.com:latest
+
+      - name: Trigger deploy
+        run: |
+          curl -sf -X POST https://alexsubramanian.com/v1/update \
+            -H "Authorization: Bearer ${{ secrets.WATCHTOWER_TOKEN }}"
