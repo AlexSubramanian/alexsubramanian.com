@@ -19,6 +19,8 @@ This is where the site you're reading right now is running — a StarTech 25U ra
 ## Hardware
 
 - Proxmox VE host (HP EliteDesk 800 G4)
+- Raspberry Pi 4B + Samsung T7 SSD (monitoring & UPS management)
+- CyberPower CP1500PFCRM2U rack UPS
 - UniFi networking (UDM SE, switches, patch panel)
 - Network storage (UNAS Pro, 24TB RAID 5)
 
@@ -33,7 +35,7 @@ This is where the site you're reading right now is running — a StarTech 25U ra
 
 ## Monitoring
 
-The infrastructure is monitored with a Prometheus + Grafana stack running on the Arr Stack VM. Blackbox exporter performs HTTP health checks against every service, and node-exporter agents on each VM report system-level metrics.
+The infrastructure is monitored with a Prometheus + Grafana stack running on a dedicated Raspberry Pi 4B, separate from the Proxmox host and VMs it monitors. The Pi boots from a Samsung T7 SSD and also runs a NUT server for UPS monitoring of the CyberPower CP1500PFCRM2U. Blackbox exporter performs HTTP health checks against every service, and node-exporter agents on each host report system-level metrics.
 
 ### Service Status & Uptime
 
@@ -45,15 +47,17 @@ Blackbox probes each service endpoint every 30 seconds. The uptime history panel
 
 ![Grafana resource metrics dashboard](/images/grafana-metrics.png)
 
-Per-VM gauges for CPU and memory utilization, plus network throughput across all three Debian VMs. I plan to move the monitoring stack to a separate machine so it's not running on the same hardware as the services it monitors.
+Per-host gauges for CPU and memory utilization, plus network throughput across all VMs and the monitoring Pi.
 
 ## Key Technologies
 
 - **Proxmox VE** — Type 1 hypervisor for VM management
-- **Docker** — Container orchestration across all VMs
+- **Docker** — Container orchestration across all hosts
+- **Raspberry Pi 4B** — Dedicated monitoring and UPS management
 - **NFS** — Shared media storage from UNAS Pro
 - **Unifi** — Network management (UDM SE)
 - **Prometheus + Grafana** — Metrics collection, dashboards, and service health monitoring
 - **Blackbox Exporter** — HTTP endpoint probing for uptime tracking
+- **NUT** — Network UPS Tools for UPS monitoring
 
 For full details, see the [homelab repo on GitHub](https://github.com/AlexSubramanian/homelab).

@@ -20,6 +20,12 @@ services:
       - PROXIED=true
       - IP6_PROVIDER=none
       - UPDATE_CRON=0 */6 * * *
+      - DETECTION_TIMEOUT=15s
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "https://api.cloudflare.com/cdn-cgi/trace", "-O", "/dev/null"]
+      interval: 5m
+      timeout: 15s
+      retries: 3
     restart: unless-stopped
 
   watchtower:
@@ -33,4 +39,15 @@ services:
       - WATCHTOWER_HTTP_API_UPDATE=true
       - WATCHTOWER_HTTP_API_TOKEN=${WATCHTOWER_TOKEN}
       - WATCHTOWER_POLL_INTERVAL=86400
+    restart: unless-stopped
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    command:
+      - '--path.rootfs=/host'
+    network_mode: host
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
     restart: unless-stopped
