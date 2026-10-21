@@ -15,13 +15,6 @@ alexsubramanian.com {
         reverse_proxy admin-api:8000
     }
 
-    # STAGE A -- temporary. Echoes the client certificate Cloudflare presented,
-    # so we can see whether origin pulls are live before enforcing them.
-    # Removed in stage B.
-    handle /aop-check {
-        respond "client-cert-subject: {http.request.tls.client.subject}" 200
-    }
-
     handle {
         root * /srv/site
         file_server
@@ -29,14 +22,24 @@ alexsubramanian.com {
     }
 
     tls /etc/caddy/certs/cert.pem /etc/caddy/certs/key.pem {
+        # Authenticated Origin Pulls. Cloudflare presents a client certificate
+        # on every connection to this origin; anything that bypasses Cloudflare
+        # and connects to the origin IP directly fails the TLS handshake,
+        # before a single HTTP request is parsed.
+        #
+        # This is why /admin is safe: Cloudflare Access only protects requests
+        # that actually go through Cloudflare, and admin-api's own JWT check is
+        # application code. This moves the boundary down to TLS.
+        #
+        # Caveat: the zone-wide toggle uses Cloudflare's SHARED origin-pull
+        # certificate, so this proves "came from Cloudflare", not "came from
+        # this zone". Uploading a per-zone certificate closes that.
+        #
+        # Operational footgun: if Cloudflare is ever paused or the DNS record
+        # grey-clouded, no certificate is presented and this origin stops
+        # answering until Authenticated Origin Pulls is turned off too.
         client_auth {
-            # STAGE A -- temporary. Verifies Cloudflare's origin-pull
-            # certificate when one is presented, but does not require it, so
-            # this cannot reject any traffic. It exists purely to confirm that
-            # Authenticated Origin Pulls is actually switched on at the edge
-            # before we start requiring a certificate. Promote to
-            # require_and_verify in stage B.
-            mode verify_if_given
+            mode require_and_verify
             trust_pool file /etc/caddy/certs/cf-aop-ca.pem
         }
     }
@@ -55,6 +58,11 @@ alexsubramanian.com {
 }
 
 www.alexsubramanian.com {
-    tls /etc/caddy/certs/cert.pem /etc/caddy/certs/key.pem
+    tls /etc/caddy/certs/cert.pem /etc/caddy/certs/key.pem {
+        client_auth {
+            mode require_and_verify
+            trust_pool file /etc/caddy/certs/cf-aop-ca.pem
+        }
+    }
     redir https://alexsubramanian.com{uri} permanent
 }
