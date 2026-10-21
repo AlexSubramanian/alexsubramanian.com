@@ -66,3 +66,40 @@ www.alexsubramanian.com {
     }
     redir https://alexsubramanian.com{uri} permanent
 }
+
+# Grafana and Tautulli, proxied so they are reachable from outside the LAN
+# behind the same Cloudflare Access policy as /admin. The admin page links out
+# to these rather than embedding them: nothing is framed, which is why the
+# X-Frame-Options DENY header above can stay exactly as it is.
+#
+# Each block repeats client_auth. Authenticated Origin Pulls is enabled
+# zone-wide, so Cloudflare presents its certificate for these hostnames too --
+# but Caddy only enforces it where it is configured, and a site block without
+# it would be a way around the apex's enforcement.
+(homelab_proxy) {
+    tls /etc/caddy/certs/cert.pem /etc/caddy/certs/key.pem {
+        client_auth {
+            mode require_and_verify
+            trust_pool file /etc/caddy/certs/cf-aop-ca.pem
+        }
+    }
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+    }
+    log {
+        output file /var/log/caddy/access.log
+        format json
+    }
+}
+
+grafana.alexsubramanian.com {
+    import homelab_proxy
+    reverse_proxy 192.168.1.228:3000
+}
+
+tautulli.alexsubramanian.com {
+    import homelab_proxy
+    reverse_proxy 192.168.1.103:8181
+}
