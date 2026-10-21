@@ -341,7 +341,12 @@ function hostCard(h) {
   }
 
   const foot = el("div", "host-foot");
-  const check = el("button", null, "Check now");
+  // "Check now" didn't say what it did. The page shows each agent's cached
+  // inventory (refreshed every 6h); this re-asks the registries, which costs a
+  // round trip per image and takes several seconds.
+  const check = el("button", null, "Check registries");
+  check.title = "Ask each registry whether a newer image exists. Takes a few " +
+    "seconds. Otherwise this page shows the agent's cached answer, refreshed every 6 hours.";
   check.onclick = () => runCheck(h.host, check);
   foot.appendChild(check);
 
@@ -412,7 +417,7 @@ async function confirmRollback(h, clear) {
 
 async function runCheck(host, btn) {
   const old = btn.textContent;
-  btn.disabled = true; btn.textContent = "Checking…";
+  btn.disabled = true; btn.textContent = "Asking registries…";
   try { await api("/hosts/" + host + "/check", {method: "POST"}); await load(); }
   catch (e) { showError(e); }
   finally { btn.disabled = false; btn.textContent = old; }
