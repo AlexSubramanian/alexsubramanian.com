@@ -3,6 +3,18 @@ alexsubramanian.com {
         reverse_proxy watchtower:8080
     }
 
+    # The admin control plane. Cloudflare Access protects the /admin path at the
+    # edge, so a request only reaches here with a valid session -- but admin-api
+    # verifies the Cf-Access-Jwt-Assertion header itself as well, so a request
+    # that somehow arrives without going through Access still gets a 403.
+    #
+    # strip_prefix rather than handle_path: admin-api serves /api/*, so
+    # /admin/api/overview has to arrive as /api/overview, not /overview.
+    handle /admin/api/* {
+        uri strip_prefix /admin
+        reverse_proxy admin-api:8000
+    }
+
     handle {
         root * /srv/site
         file_server
