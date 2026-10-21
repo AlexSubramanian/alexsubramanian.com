@@ -15,13 +15,31 @@ alexsubramanian.com {
         reverse_proxy admin-api:8000
     }
 
+    # STAGE A -- temporary. Echoes the client certificate Cloudflare presented,
+    # so we can see whether origin pulls are live before enforcing them.
+    # Removed in stage B.
+    handle /aop-check {
+        respond "client-cert-subject: {http.request.tls.client.subject}" 200
+    }
+
     handle {
         root * /srv/site
         file_server
         encode gzip
     }
 
-    tls /etc/caddy/certs/cert.pem /etc/caddy/certs/key.pem
+    tls /etc/caddy/certs/cert.pem /etc/caddy/certs/key.pem {
+        client_auth {
+            # STAGE A -- temporary. Verifies Cloudflare's origin-pull
+            # certificate when one is presented, but does not require it, so
+            # this cannot reject any traffic. It exists purely to confirm that
+            # Authenticated Origin Pulls is actually switched on at the edge
+            # before we start requiring a certificate. Promote to
+            # require_and_verify in stage B.
+            mode verify_if_given
+            trust_pool file /etc/caddy/certs/cf-aop-ca.pem
+        }
+    }
 
     header {
         X-Content-Type-Options nosniff
