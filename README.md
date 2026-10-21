@@ -93,6 +93,13 @@ Watchtower also polls every 24 hours as a fallback.
 |----------|---------|
 | `CLOUDFLARE_DDNS_API_TOKEN` | Cloudflare API token for DDNS updates |
 | `WATCHTOWER_TOKEN` | Bearer token for Watchtower HTTP API |
+| `HOMELAB_AGENT_TOKEN_ARR_STACK` / `_PLEX` / `_MONITORING` | Bearer tokens for the per-host homelab agents |
+| `ADMIN_API_LAN_TOKEN` | LAN-only bearer token for `admin-api` |
+| `ADMIN_ACCESS_TEAM_DOMAIN` / `ADMIN_ACCESS_AUD` / `ADMIN_ACCESS_EMAILS` | Cloudflare Access verification (phase 3) |
+| `TAUTULLI_API_KEY` | For the Plex activity endpoint |
+
+See [`admin-api/README.md`](admin-api/README.md) for the control plane that
+drives [the homelab](https://github.com/AlexSubramanian/homelab) from this site.
 
 ---
 

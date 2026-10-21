@@ -10,6 +10,28 @@ services:
       - /var/log/caddy:/var/log/caddy
     restart: unless-stopped
 
+  admin-api:
+    image: ghcr.io/alexsubramanian/alexsubramanian.com-admin-api:latest
+    container_name: admin-api
+    environment:
+      # Agent bearer tokens -- the source of truth is /etc/homelab-agent/env on
+      # each Docker host.
+      - HOMELAB_AGENT_TOKEN_ARR_STACK=${HOMELAB_AGENT_TOKEN_ARR_STACK}
+      - HOMELAB_AGENT_TOKEN_PLEX=${HOMELAB_AGENT_TOKEN_PLEX}
+      - HOMELAB_AGENT_TOKEN_MONITORING=${HOMELAB_AGENT_TOKEN_MONITORING}
+      # Cloudflare Access, filled in during phase 3.
+      - ADMIN_ACCESS_TEAM_DOMAIN=${ADMIN_ACCESS_TEAM_DOMAIN:-}
+      - ADMIN_ACCESS_AUD=${ADMIN_ACCESS_AUD:-}
+      - ADMIN_ACCESS_EMAILS=${ADMIN_ACCESS_EMAILS:-}
+      # LAN-only bearer token, for scripts and for testing before Access exists.
+      - ADMIN_API_LAN_TOKEN=${ADMIN_API_LAN_TOKEN:-}
+      - TAUTULLI_API_KEY=${TAUTULLI_API_KEY:-}
+    # No ports published. Caddy reaches it over the compose network as
+    # admin-api:8000, and nothing adds that route until Cloudflare Access is in
+    # front of it -- so there is never a window where this is internet-reachable
+    # without an Access session.
+    restart: unless-stopped
+
   cloudflare-ddns:
     image: favonia/cloudflare-ddns:latest
     container_name: cloudflare-ddns

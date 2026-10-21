@@ -28,6 +28,13 @@ jobs:
           push: true
           tags: ghcr.io/alexsubramanian/alexsubramanian.com:latest
 
+      - name: Build and push admin-api image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./admin-api
+          push: true
+          tags: ghcr.io/alexsubramanian/alexsubramanian.com-admin-api:latest
+
       - name: Trigger deploy
         run: |
           # Watchtower restarts the Caddy container that proxies this request,
