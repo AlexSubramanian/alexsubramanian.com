@@ -72,6 +72,9 @@ body{
 .chip.unknown{background:var(--unknown-bg);color:var(--unknown)}
 .chip.bad{background:var(--bad-bg);color:var(--bad)}
 .chip.pinned{background:#10303a;color:var(--accent)}
+button.chip.running{background:#10303a;color:var(--accent);border:0;cursor:pointer;
+  display:inline-flex;align-items:center;gap:6px}
+button.chip.running .spin{width:6px;height:6px}
 
 table{width:100%;border-collapse:collapse;font-size:13.5px}
 td{padding:9px 16px;border-top:1px solid var(--line-soft);vertical-align:middle}
@@ -120,6 +123,15 @@ button.danger:hover:not(:disabled){border-color:var(--bad)}
   background:var(--panel)}
 .drawer-title{font-family:var(--mono);font-size:12.5px;font-weight:600}
 .drawer-status{font-family:var(--mono);font-size:11px;color:var(--faint)}
+.drawer-tabs{display:flex;gap:6px;padding:8px 20px 0;background:var(--panel);
+  border-bottom:1px solid var(--line-soft);overflow-x:auto}
+.drawer-tabs[hidden]{display:none}
+.tab{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11.5px;
+  padding:6px 11px;border-radius:6px 6px 0 0;border:1px solid var(--line-soft);border-bottom:0;
+  background:var(--panel-2);color:var(--dim);white-space:nowrap}
+.tab.active{color:var(--ink);border-color:var(--line);background:var(--ground)}
+.tab .dot{margin-right:0}
+.tab .spin{width:7px;height:7px}
 .drawer pre{margin:0;padding:14px 20px;overflow:auto;font-family:var(--mono);font-size:12px;
   line-height:1.65;color:var(--dim);white-space:pre-wrap;word-break:break-word;flex:1}
 .spin{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);
@@ -175,12 +187,23 @@ button.danger:hover:not(:disabled){border-color:var(--bad)}
     <span class="drawer-status" id="drawer-status"></span>
     <button style="margin-left:auto" onclick="closeDrawer()">Close</button>
   </div>
+  <div class="drawer-tabs" id="drawer-tabs" role="tablist" hidden></div>
   <pre id="drawer-log"></pre>
 </section>
 
 <script>
 const API = "/admin/api";
-let overview = null, polling = null;
+let overview = null;
+
+// Jobs are tracked per host, each with its own log and its own poll loop, so
+// updating several stacks at once keeps their output separate. Each host's
+// agent runs one job at a time, so one entry per host is enough.
+//   {host, jobId, title, state, exitCode, log, offset, timer, lost}
+const jobs = {};
+let shownHost = null;
+
+const POLL_MS = 1500;
+const RETRY_MS = 5000;
 
 // Cloudflare Access supplies the session cookie; the edge adds the JWT header
 // that admin-api verifies. Nothing authenticating lives in this page.
@@ -288,6 +311,23 @@ function hostCard(h) {
   else head.appendChild(el("span", "chip ok", "current"));
   if (s.pinned) head.appendChild(el("span", "chip pinned", s.pinned + " pinned"));
 
+  // A job can be running even if this page didn't start it (another tab, a
+  // reload mid-update), so the agent's own report counts too.
+  // A job this page has already seen finish doesn't count, even if the overview
+  // fetched a moment earlier still lists it.
+  const agentJob = h.reachable && h.agent && h.agent.job_running;
+  const seenDone = agentJob && jobs[h.host] && jobs[h.host].jobId === agentJob && !jobRunning(h.host);
+  const busy = jobRunning(h.host) || !!(agentJob && !seenDone);
+  if (busy) {
+    const j = jobs[h.host];
+    const chip = el("button", "chip running");
+    chip.appendChild(el("span", "spin"));
+    chip.appendChild(document.createTextNode(j && j.title && j.title.startsWith("Roll") ? "rolling back" : "updating"));
+    chip.title = "Show this job's log";
+    chip.onclick = () => showJob(h.host);
+    head.appendChild(chip);
+  }
+
   const meta = el("span", "host-meta");
   if (h.reachable && st) {
     const age = st.age_seconds;
@@ -351,16 +391,18 @@ function hostCard(h) {
   foot.appendChild(check);
 
   const upd = el("button", "primary", "Update stack");
-  upd.disabled = !h.reachable || !s.updates;
+  upd.disabled = !h.reachable || !s.updates || busy;
   upd.onclick = () => confirmUpdate(h);
   foot.appendChild(upd);
 
   if (s.pinned) {
     const unpin = el("button", null, "Release " + s.pinned + " pin" + (s.pinned === 1 ? "" : "s"));
+    unpin.disabled = busy;
     unpin.onclick = () => confirmRollback(h, true);
     foot.appendChild(unpin);
   } else if (h.reachable) {
     const rb = el("button", "danger", "Roll back");
+    rb.disabled = busy;
     rb.onclick = () => confirmRollback(h, false);
     foot.appendChild(rb);
   }
@@ -423,7 +465,13 @@ async function runCheck(host, btn) {
   finally { btn.disabled = false; btn.textContent = old; }
 }
 
+function jobRunning(host) {
+  const j = jobs[host];
+  return !!(j && j.state === "running");
+}
+
 async function startJob(host, path, body, title) {
+  if (jobRunning(host)) { showJob(host); return; }
   let res;
   try {
     res = await api("/hosts/" + host + path, {
@@ -432,40 +480,125 @@ async function startJob(host, path, body, title) {
     });
   } catch (e) { return showError(e); }
   if (!res.job_id) { return showError(new Error(res.error || "no job started")); }
-  openDrawer(title);
-  pollJob(host, res.job_id);
+  trackJob(host, res.job_id, title);
+  if (overview) render(overview);   // reflect the running job on the card now
+  showJob(host);
 }
 
-function openDrawer(title) {
-  document.getElementById("drawer-title").textContent = title;
-  document.getElementById("drawer-log").textContent = "";
-  document.getElementById("drawer-status").textContent = "running";
-  document.getElementById("drawer-spin").style.display = "inline-block";
-  document.getElementById("drawer").classList.add("open");
-}
-function closeDrawer() {
-  document.getElementById("drawer").classList.remove("open");
-  if (polling) { clearTimeout(polling); polling = null; }
+// Start following a job. Replaces any finished job previously shown for the host.
+function trackJob(host, jobId, title) {
+  const old = jobs[host];
+  if (old && old.timer) clearTimeout(old.timer);
+  const job = {host, jobId, title, state: "running", exitCode: null,
+               log: "", offset: 0, timer: null, lost: null};
+  jobs[host] = job;
+  pollJob(job);
 }
 
-function pollJob(host, jobId) {
-  let offset = 0;
-  const log = document.getElementById("drawer-log");
+// Each job gets its own loop, and it stops when the job ends.
+function pollJob(job) {
   const tick = async () => {
+    job.timer = null;
+    if (jobs[job.host] !== job) return;   // replaced by a newer job
     let j;
-    try { j = await api("/hosts/" + host + "/jobs/" + jobId + "?offset=" + offset); }
-    catch (e) { document.getElementById("drawer-status").textContent = "lost contact: " + e.message; return; }
-    if (j.log) { log.textContent += j.log; log.scrollTop = log.scrollHeight; }
-    offset = j.next_offset;
-    if (j.state === "running") { polling = setTimeout(tick, 1500); return; }
-    document.getElementById("drawer-spin").style.display = "none";
-    document.getElementById("drawer-status").textContent =
-      j.state === "succeeded" ? "finished" :
-      j.state === "busy" ? "another job was already running — nothing changed" :
-      "failed (exit " + j.exit_code + ")";
+    try {
+      j = await api("/hosts/" + job.host + "/jobs/" + job.jobId + "?offset=" + job.offset);
+    } catch (e) {
+      if (e.message === "SESSION") { showError(e); return; }
+      // Keep retrying: the job carries on regardless of what this page sees.
+      job.lost = e.message;
+      if (shownHost === job.host) renderDrawer(false);
+      job.timer = setTimeout(tick, RETRY_MS);
+      return;
+    }
+    job.lost = null;
+    if (!job.title) {
+      job.title = (j.kind === "rollback" ? "Rolling back " : "Updating ") + job.host;
+      if (shownHost === job.host) renderDrawer(false); else renderTabs();
+    }
+    if (j.log) {
+      job.log += j.log;
+      if (shownHost === job.host) {
+        const pre = document.getElementById("drawer-log");
+        pre.textContent += j.log;
+        pre.scrollTop = pre.scrollHeight;
+      }
+    }
+    job.offset = j.next_offset;
+    if (j.state === "running") {
+      job.timer = setTimeout(tick, POLL_MS);
+      return;
+    }
+    job.state = j.state;
+    job.exitCode = j.exit_code;
+    if (shownHost === job.host) renderDrawer(false); else renderTabs();
     load();
   };
   tick();
+}
+
+// Follow jobs the agents report that this page isn't already tracking -- one
+// started before a reload, or from another tab.
+function adoptRunningJobs(d) {
+  d.hosts.forEach(h => {
+    const id = h.reachable && h.agent && h.agent.job_running;
+    if (id && !(jobs[h.host] && jobs[h.host].jobId === id)) trackJob(h.host, id, null);
+  });
+}
+
+function jobStatus(job) {
+  if (job.state === "running") return job.lost ? "lost contact (" + job.lost + ") — retrying" : "running";
+  if (job.state === "succeeded") return "finished";
+  if (job.state === "busy") return "another job was already running — nothing changed";
+  return "failed (exit " + job.exitCode + ")";
+}
+
+function showJob(host) {
+  if (!jobs[host]) return;
+  shownHost = host;
+  renderDrawer(true);
+  document.getElementById("drawer").classList.add("open");
+}
+
+function renderDrawer(withLog) {
+  const job = jobs[shownHost];
+  if (!job) return;
+  document.getElementById("drawer-title").textContent = job.title || job.host;
+  document.getElementById("drawer-status").textContent = jobStatus(job);
+  document.getElementById("drawer-spin").style.display = job.state === "running" ? "inline-block" : "none";
+  if (withLog) {
+    const pre = document.getElementById("drawer-log");
+    pre.textContent = job.log;
+    pre.scrollTop = pre.scrollHeight;
+  }
+  renderTabs();
+}
+
+// Tabs only appear once there is more than one job to switch between.
+function renderTabs() {
+  const bar = document.getElementById("drawer-tabs");
+  const hosts = Object.keys(jobs);
+  bar.hidden = hosts.length < 2;
+  bar.innerHTML = "";
+  if (bar.hidden) return;
+  hosts.forEach(host => {
+    const job = jobs[host];
+    const t = el("button", "tab" + (host === shownHost ? " active" : ""));
+    t.setAttribute("role", "tab");
+    t.setAttribute("aria-selected", host === shownHost ? "true" : "false");
+    t.title = (job.title || host) + " — " + jobStatus(job);
+    t.appendChild(job.state === "running" ? el("span", "spin") :
+      el("span", "dot " + (job.state === "succeeded" ? "ok" : job.state === "busy" ? "unknown" : "bad")));
+    t.appendChild(document.createTextNode(host));
+    t.onclick = () => showJob(host);
+    bar.appendChild(t);
+  });
+}
+
+// Closing only hides the drawer. Running jobs keep being followed (one small
+// request every 1.5s each) so the host cards stay accurate.
+function closeDrawer() {
+  document.getElementById("drawer").classList.remove("open");
 }
 
 function showError(e) {
@@ -491,7 +624,11 @@ async function loadPlex() {
 }
 
 async function load() {
-  try { render(await api("/overview")); }
+  try {
+    const d = await api("/overview");
+    adoptRunningJobs(d);
+    render(d);
+  }
   catch (e) { showError(e); }
 }
 
