@@ -36,6 +36,13 @@ services:
     image: favonia/cloudflare-ddns:latest
     container_name: cloudflare-ddns
     network_mode: host
+    # Pin resolvers: with host networking Docker snapshots /etc/resolv.conf at
+    # container start. On boot dhcpcd hadn't populated it yet, the container
+    # got an empty copy, every IP check failed silently for 8 days, and the
+    # site went down (522) when the home IP changed.
+    dns:
+      - 192.168.1.1
+      - 1.1.1.1
     environment:
       - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_DDNS_API_TOKEN}
       - DOMAINS=alexsubramanian.com
@@ -43,11 +50,8 @@ services:
       - IP6_PROVIDER=none
       - UPDATE_CRON=0 */6 * * *
       - DETECTION_TIMEOUT=15s
-    healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "https://api.cloudflare.com/cdn-cgi/trace", "-O", "/dev/null"]
-      interval: 5m
-      timeout: 15s
-      retries: 3
+    # No healthcheck: the image ships no shell or wget/curl, so any exec-based
+    # check always fails and "unhealthy" becomes meaningless noise.
     restart: unless-stopped
 
   watchtower:
